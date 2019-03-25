@@ -35,6 +35,12 @@ class Plugin {
 	/* ------------------------------------------ */
 
 
+	const FIELD_KEY = 'wrap_as_gift';
+
+
+	/* ------------------------------------------ */
+
+
 	/**
 	 * Plugin constructor.
 	 */
@@ -56,6 +62,25 @@ class Plugin {
 		add_action( 'woocommerce_add_order_item_meta', [ $this, 'save_gift_wrap_order' ], 10, 2 );
 		add_action( 'woocommerce_order_item_display_meta_key', [ $this, 'display_gift_wrap_order_key' ] );
 		add_action( 'woocommerce_order_item_display_meta_value', [ $this, 'display_gift_wrap_order_value' ], 10, 2 );
+
+	}
+
+
+	/* ------------------------------------------ */
+
+
+	/**
+	 * Retrieve product gift wrap price.
+	 *
+	 * @param \WC_Product $product current product.
+	 *
+	 * @return string
+	 */
+	private function get_gift_price( $product ) {
+
+		$price = get_post_meta( $product->get_ID(), '_gift_wrap_price', true );
+
+		return ( empty( $price ) ) ? __( 'FREE', 'dorzki-wc-gift-wrap' ) : wc_price( $price );
 
 	}
 
@@ -95,10 +120,10 @@ class Plugin {
 	 */
 	public function save_gift_wrap_field_value( $cart_item ) {
 
-		$field_value = ( isset( $_POST['wrap_as_gift'] ) ) ? sanitize_text_field( $_POST['wrap_as_gift'] ) : null;
+		$field_value = ( isset( $_POST[ self::FIELD_KEY ] ) ) ? sanitize_text_field( $_POST[ self::FIELD_KEY ] ) : null;
 
 		if ( ! empty( $field_value ) ) {
-			$cart_item['wrap_as_gift'] = $field_value;
+			$cart_item[ self::FIELD_KEY ] = $field_value;
 		}
 
 		return $cart_item;
@@ -116,10 +141,8 @@ class Plugin {
 	 */
 	public function save_gift_wrap_field_value_session( $cart_item_data, $values ) {
 
-		if ( isset( $values['wrap_as_gift'] ) ) {
-
-			$cart_item_data['wrap_as_gift'] = $values['wrap_as_gift'];
-
+		if ( isset( $values[ self::FIELD_KEY ] ) ) {
+			$cart_item_data[ self::FIELD_KEY ] = $values[ self::FIELD_KEY ];
 		}
 
 		return $cart_item_data;
@@ -140,10 +163,9 @@ class Plugin {
 	 */
 	public function display_gift_wrap_on_cart_page( $item_data, $cart_item ) {
 
-		if ( ! empty( $cart_item['wrap_as_gift'] ) ) {
+		if ( ! empty( $cart_item[ self::FIELD_KEY ] ) ) {
 
-			$price = get_post_meta( $cart_item['data']->get_ID(), '_gift_wrap_price', true );
-			$price = ( empty( $price ) ) ? __( 'FREE', 'dorzki-wc-gift-wrap' ) : wc_price( $price );
+			$price = $this->get_gift_price( $cart_item['data'] );
 
 			$item_data[] = [
 				'name'  => esc_html__( 'Gift Wrap', 'dorzki-wc-gift-wrap' ),
@@ -220,13 +242,12 @@ class Plugin {
 			return;
 		}
 
-		$price = get_post_meta( $product->get_ID(), '_gift_wrap_price', true );
-		$price = ( empty( $price ) ) ? __( 'FREE', 'dorzki-wc-gift-wrap' ) : wc_price( $price );
+		$price = $this->get_gift_price( $product );
 
 		$text = sprintf( __( 'Gift Wrap (%s)', 'dorzki-wc-gift-wrap' ), $price );
 
 		echo "<div class='gift-wrap-wrapper'>";
-		echo "	<label><input type='checkbox' id='wrap_as_gift' name='wrap_as_gift' value='1'>{$text}</label>";
+		echo "	<label><input type='checkbox' id='" . self::FIELD_KEY . "' name='" . self::FIELD_KEY . "' value='1'>{$text}</label>";
 		echo "</div>";
 
 	}
@@ -248,7 +269,7 @@ class Plugin {
 
 		foreach ( $cart->get_cart() as $product_data ) {
 
-			if ( isset( $product_data['wrap_as_gift'] ) ) {
+			if ( isset( $product_data[ self::FIELD_KEY ] ) ) {
 
 				$price = get_post_meta( $product_data['data']->get_ID(), '_gift_wrap_price', true );
 
@@ -273,8 +294,8 @@ class Plugin {
 	 */
 	public function save_gift_wrap_order( $item_id, $values ) {
 
-		if ( ! empty( $values['wrap_as_gift'] ) ) {
-			wc_add_order_item_meta( $item_id, 'wrap_as_gift', $values['wrap_as_gift'] );
+		if ( ! empty( $values[ self::FIELD_KEY ] ) ) {
+			wc_add_order_item_meta( $item_id, self::FIELD_KEY, $values[ self::FIELD_KEY ] );
 		}
 
 	}
@@ -289,7 +310,7 @@ class Plugin {
 	 */
 	public function display_gift_wrap_order_key( $display_key ) {
 
-		return ( 'wrap_as_gift' === $display_key ) ? __( 'Gift Wrap', 'dorzki-wc-gift-wrap' ) : $display_key;
+		return ( self::FIELD_KEY === $display_key ) ? __( 'Gift Wrap', 'dorzki-wc-gift-wrap' ) : $display_key;
 
 	}
 
@@ -304,7 +325,7 @@ class Plugin {
 	 */
 	public function display_gift_wrap_order_value( $display_value, $meta ) {
 
-		if ( 'wrap_as_gift' === $meta->key ) {
+		if ( self::FIELD_KEY === $meta->key ) {
 			return __( 'Yes', 'dorzki-wc-gift-wrap' );
 		}
 
